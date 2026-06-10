@@ -86,9 +86,3 @@ git init                # sólo si aún no hay repo
 git add .
 git commit -m "Initial prototype import"
 ```
-
-Si quieres que haga el primer commit por ti lo puedo ejecutar aquí (dime si lo deseas).
-
----
-Si deseas que adapte este README a otro idioma o que añada un apartado de despliegue (Vercel/Netlify/Docker), dime y lo genero.
-  
