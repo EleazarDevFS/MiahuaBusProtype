@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowUpDown, MapPin, Search, Clock, ChevronRight, Info, Save, Check } from 'lucide-react';
+import { ArrowUpDown, MapPin, Search, Clock, ChevronRight, Info, BookmarkPlus } from 'lucide-react';
 import { Header } from '../components/Header';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { BottomNav } from '../components/BottomNav';
+import { StaticMap } from '../components/StaticMap';
+import { SaveRouteModal } from '../components/SaveRouteModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { ROUTES, findRoutesByStops, getNextDeparture } from '../data/routes';
 import PermissionModal from '../components/PermissionModal';
@@ -29,7 +31,7 @@ interface SaveModalState {
 
 export default function Planner() {
   const navigate = useNavigate();
-  const { addRoute } = useUserRoutes();
+  const { isRouteSaved } = useUserRoutes();
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [activeField, setActiveField] = useState<'origin' | 'destination' | null>(null);
@@ -39,10 +41,6 @@ export default function Planner() {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [permission, setPermission] = useState(getLocationPermission());
   const [saveModal, setSaveModal] = useState<SaveModalState>({ isOpen: false });
-  const [routeName, setRouteName] = useState('');
-  const [routeNotes, setRouteNotes] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   React.useEffect(() => {
     const current = getLocationPermission();
@@ -80,41 +78,9 @@ export default function Planner() {
     setActiveField(null);
   };
 
-  const openSaveModal = (routeId: string) => {
+  const openSaveModal = (routeId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setSaveModal({ isOpen: true, routeId, origin, destination });
-    setRouteName(`${origin} → ${destination}`);
-    setRouteNotes('');
-  };
-
-  const handleSaveRoute = async () => {
-    if (!saveModal.routeId || !routeName.trim()) return;
-
-    setIsSaving(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      addRoute({
-        id: Date.now().toString(),
-        name: routeName.trim(),
-        origin: saveModal.origin || '',
-        destination: saveModal.destination || '',
-        routeId: saveModal.routeId,
-        savedAt: Date.now(),
-        notes: routeNotes.trim() || undefined,
-        isFavorite: false
-      });
-
-      setSavedSuccess(true);
-      setTimeout(() => {
-        setSaveModal({ isOpen: false });
-        setRouteName('');
-        setRouteNotes('');
-        setSavedSuccess(false);
-        navigate('/routes');
-      }, 1200);
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const filteredStops = (query: string) =>
@@ -323,45 +289,60 @@ export default function Planner() {
                   <div className="space-y-3">
                     {results.map((route) => {
                       const next = getNextDeparture(route.schedules);
+                      const alreadySaved = isRouteSaved(route.id, origin, destination);
                       return (
                         <motion.div
                           key={route.id}
-                          className="relative group"
+                          className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
                         >
-                          <motion.button
-                            whileTap={{ scale: 0.98 }}
+                          <button
                             onClick={() => navigate(`/route/${route.id}`)}
-                            className="w-full p-4 bg-white border border-gray-200 rounded-xl hover:border-[#2E7D32] transition-colors text-left shadow-sm"
+                            className="w-full text-left"
                           >
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: route.color }} />
-                              <span className="text-sm text-gray-900 font-medium">{route.name}</span>
-                              <ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                            </div>
-                            <p className="text-xs text-gray-500 mb-2 truncate">
-                              {route.origin} → {route.destination}
-                            </p>
-                            <div className="flex items-center gap-3 text-xs text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {next
-                                  ? <span className="text-[#2E7D32] font-medium">Próximo: {next.time} ({formatMins(next.minutesAway)})</span>
-                                  : <span className="text-gray-400">Sin más salidas hoy</span>
-                                }
+                            <StaticMap
+                              routeId={route.id}
+                              color={route.color}
+                              height="100px"
+                              interactive={false}
+                              className="rounded-none rounded-t-xl"
+                            />
+                            <div className="p-4">
+                              <div className="mb-2 flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full" style={{ backgroundColor: route.color }} />
+                                <span className="text-sm font-medium text-gray-900">{route.name}</span>
+                                <ChevronRight className="ml-auto h-4 w-4 text-gray-400" />
                               </div>
-                              <span>~{route.estimatedDuration} min</span>
+                              <p className="mb-2 truncate text-xs text-gray-500">
+                                {route.origin} → {route.destination}
+                              </p>
+                              <div className="flex items-center gap-3 text-xs text-gray-600">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {next
+                                    ? <span className="font-medium text-[#2E7D32]">Próximo: {next.time} ({formatMins(next.minutesAway)})</span>
+                                    : <span className="text-gray-400">Sin más salidas hoy</span>
+                                  }
+                                </div>
+                                <span>~{route.estimatedDuration} min</span>
+                              </div>
                             </div>
-                          </motion.button>
+                          </button>
 
-                          {/* Botón de guardar */}
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => openSaveModal(route.id)}
-                            className="absolute top-2 right-2 p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-green-50 hover:border-[#2E7D32] opacity-0 group-hover:opacity-100 transition-all"
-                            title="Guardar ruta"
-                          >
-                            <Save className="w-4 h-4 text-gray-600 group-hover:text-[#2E7D32]" />
-                          </motion.button>
+                          <div className="border-t border-gray-100 px-4 pb-3">
+                            <motion.button
+                              whileTap={{ scale: 0.97 }}
+                              onClick={(e) => openSaveModal(route.id, e)}
+                              disabled={alreadySaved}
+                              className={`flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
+                                alreadySaved
+                                  ? 'border border-green-200 bg-green-50 text-[#2E7D32]'
+                                  : 'border border-[#2E7D32] bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9]'
+                              }`}
+                            >
+                              <BookmarkPlus className="h-4 w-4" />
+                              {alreadySaved ? 'Ya guardada en Mis rutas' : 'Guardar en Mis rutas'}
+                            </motion.button>
+                          </div>
                         </motion.div>
                       );
                     })}
@@ -379,101 +360,16 @@ export default function Planner() {
         </AnimatePresence>
       </div>
 
-      {/* Modal de guardar ruta */}
-      <AnimatePresence>
-        {saveModal.isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-end"
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="w-full bg-white rounded-t-2xl p-4 max-w-lg mx-auto"
-            >
-              <div className="mb-4">
-                <h3 className="text-lg font-bold text-gray-900">Guardar ruta</h3>
-                <p className="text-xs text-gray-500 mt-1">Personaliza y guarda tu ruta para acceso rápido</p>
-              </div>
-
-              {!savedSuccess ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Nombre de la ruta</label>
-                    <input
-                      type="text"
-                      value={routeName}
-                      onChange={(e) => setRouteName(e.target.value)}
-                      placeholder="Ej. Mi viaje a trabajar"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2E7D32]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Notas (opcional)</label>
-                    <textarea
-                      value={routeNotes}
-                      onChange={(e) => setRouteNotes(e.target.value)}
-                      placeholder="Ej. Salgo lunes a viernes a las 8am"
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#2E7D32] resize-none"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-xs text-green-800">
-                      <strong>Ruta:</strong> {saveModal.origin} → {saveModal.destination}
-                    </p>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSaveModal({ isOpen: false })}
-                      className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Cancelar
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleSaveRoute}
-                      disabled={isSaving || !routeName.trim()}
-                      className="flex-1 py-2.5 bg-[#2E7D32] text-white rounded-lg text-sm font-medium hover:bg-[#1B5E20] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                      {isSaving ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Guardando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Guardar ruta
-                        </>
-                      )}
-                    </motion.button>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3"
-                  >
-                    <Check className="w-6 h-6 text-[#2E7D32]" />
-                  </motion.div>
-                  <p className="text-gray-900 font-bold mb-1">¡Ruta guardada!</p>
-                  <p className="text-xs text-gray-500">Se agregó a tu lista de rutas favoritas</p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {saveModal.isOpen && saveModal.routeId && (
+        <SaveRouteModal
+          isOpen={saveModal.isOpen}
+          onClose={() => setSaveModal({ isOpen: false })}
+          routeId={saveModal.routeId}
+          origin={saveModal.origin || ''}
+          destination={saveModal.destination || ''}
+          onSaved={() => navigate('/routes')}
+        />
+      )}
 
       <BottomNav />
 

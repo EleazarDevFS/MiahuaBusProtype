@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Definir el tipo de una ruta guardada por el usuario
 export interface UserRoute {
   id: string;
   name: string;
@@ -12,23 +11,46 @@ export interface UserRoute {
   isFavorite: boolean;
 }
 
-// Definir el tipo del contexto
 interface UserRoutesContextType {
   savedRoutes: UserRoute[];
   addRoute: (route: UserRoute) => void;
   removeRoute: (id: string) => void;
   toggleFavorite: (id: string) => void;
+  isRouteSaved: (routeId: string, origin: string, destination: string) => boolean;
 }
 
-// Crear el contexto
+const STORAGE_KEY = 'miahuabus_user_routes';
+
 const UserRoutesContext = createContext<UserRoutesContextType | undefined>(undefined);
 
-// Provider
+function loadSavedRoutes(): UserRoute[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as UserRoute[];
+  } catch {
+    // ignore corrupt data
+  }
+  return [];
+}
+
 export function UserRoutesProvider({ children }: { children: ReactNode }) {
-  const [savedRoutes, setSavedRoutes] = useState<UserRoute[]>([]);
+  const [savedRoutes, setSavedRoutes] = useState<UserRoute[]>(loadSavedRoutes);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRoutes));
+  }, [savedRoutes]);
 
   const addRoute = (route: UserRoute) => {
-    setSavedRoutes(prev => [...prev, route]);
+    setSavedRoutes(prev => {
+      const exists = prev.some(
+        r =>
+          r.routeId === route.routeId &&
+          r.origin.toLowerCase() === route.origin.toLowerCase() &&
+          r.destination.toLowerCase() === route.destination.toLowerCase()
+      );
+      if (exists) return prev;
+      return [...prev, route];
+    });
   };
 
   const removeRoute = (id: string) => {
@@ -36,21 +58,30 @@ export function UserRoutesProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleFavorite = (id: string) => {
-    setSavedRoutes(prev => 
-      prev.map(route => 
+    setSavedRoutes(prev =>
+      prev.map(route =>
         route.id === id ? { ...route, isFavorite: !route.isFavorite } : route
       )
     );
   };
 
+  const isRouteSaved = (routeId: string, origin: string, destination: string) =>
+    savedRoutes.some(
+      r =>
+        r.routeId === routeId &&
+        r.origin.toLowerCase() === origin.toLowerCase() &&
+        r.destination.toLowerCase() === destination.toLowerCase()
+    );
+
   return (
-    <UserRoutesContext.Provider value={{ savedRoutes, addRoute, removeRoute, toggleFavorite }}>
+    <UserRoutesContext.Provider
+      value={{ savedRoutes, addRoute, removeRoute, toggleFavorite, isRouteSaved }}
+    >
       {children}
     </UserRoutesContext.Provider>
   );
 }
 
-// ✅ HOOK - ESTA ES LA FUNCIÓN QUE DEBE ESTAR EXPORTADA
 export const useUserRoutes = () => {
   const context = useContext(UserRoutesContext);
   if (context === undefined) {
