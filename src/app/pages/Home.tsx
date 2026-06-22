@@ -6,20 +6,22 @@ import {
   Clock,
   ChevronRight,
   Zap,
-  Briefcase,
-  AlertCircle,
+  BellRing,
   Star,
   TrendingUp,
   Map,
   Navigation,
+  Bell,
 } from 'lucide-react';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
 import { StaticMap } from '../components/StaticMap';
+import { ActiveAlertsBanner } from '../components/ActiveAlertsBanner';
 import { motion } from 'motion/react';
 import { ROUTES, getNextDeparture } from '../data/routes';
 import { useAuth } from '../context/AuthContext';
 import { useUserRoutes } from '../context/UserRoutesContext';
+import { useStopAlerts } from '../context/StopAlertsContext';
 
 function getGreeting(name: string): string {
   const hour = new Date().getHours();
@@ -40,7 +42,10 @@ export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { savedRoutes } = useUserRoutes();
+  const { alerts, globalEnabled, activeAlertCount } = useStopAlerts();
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const activeAlerts = alerts.filter(a => a.enabled && globalEnabled).slice(0, 3);
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 30000);
@@ -117,36 +122,120 @@ export default function Home() {
           </motion.button>
         </div>
 
+        <div className="mt-3 px-4">
+          <ActiveAlertsBanner />
+        </div>
+
         {/* Acciones rápidas */}
-        <div className="mt-4 border-b border-gray-100 bg-white px-4 py-4">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="mt-2 border-b border-gray-100 bg-white px-4 py-4">
+          <div className="grid grid-cols-4 gap-2">
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/planner')}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#A5D6A7] bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] p-3 transition-shadow hover:shadow-md"
+              className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-[#A5D6A7] bg-gradient-to-br from-[#E8F5E9] to-[#C8E6C9] p-2.5 transition-shadow hover:shadow-md"
             >
-              <Zap className="h-6 w-6 text-[#2E7D32]" />
-              <span className="text-center text-xs font-medium text-gray-800">Planificar</span>
+              <Zap className="h-5 w-5 text-[#2E7D32]" />
+              <span className="text-center text-[10px] font-medium text-gray-800">Planificar</span>
             </motion.button>
 
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/routes')}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#90CAF9] bg-gradient-to-br from-[#E3F2FD] to-[#BBDEFB] p-3 transition-shadow hover:shadow-md"
+              className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-[#90CAF9] bg-gradient-to-br from-[#E3F2FD] to-[#BBDEFB] p-2.5 transition-shadow hover:shadow-md"
             >
-              <MapPin className="h-6 w-6 text-[#1976D2]" />
-              <span className="text-center text-xs font-medium text-gray-800">Mis rutas</span>
+              <MapPin className="h-5 w-5 text-[#1976D2]" />
+              <span className="text-center text-[10px] font-medium text-gray-800">Mis rutas</span>
             </motion.button>
 
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/profile')}
-              className="flex flex-col items-center justify-center gap-2 rounded-lg border border-[#FFCC80] bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] p-3 transition-shadow hover:shadow-md"
+              onClick={() => navigate('/notifications')}
+              className="relative flex flex-col items-center justify-center gap-1.5 rounded-lg border border-[#FFCC80] bg-gradient-to-br from-[#FFF3E0] to-[#FFE0B2] p-2.5 transition-shadow hover:shadow-md"
             >
-              <Briefcase className="h-6 w-6 text-[#F57C00]" />
-              <span className="text-center text-xs font-medium text-gray-800">Perfil</span>
+              {activeAlertCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#F57F17] text-[9px] font-bold text-white">
+                  {activeAlertCount}
+                </span>
+              )}
+              <BellRing className="h-5 w-5 text-[#F57F17]" />
+              <span className="text-center text-[10px] font-medium text-gray-800">Alertas</span>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/search')}
+              className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 p-2.5 transition-shadow hover:shadow-md"
+            >
+              <Search className="h-5 w-5 text-gray-600" />
+              <span className="text-center text-[10px] font-medium text-gray-800">Explorar</span>
             </motion.button>
           </div>
+        </div>
+
+        {/* Alertas de parada — sección visible */}
+        <div className="border-b border-gray-100 bg-white px-4 py-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-[#F57F17]" />
+              <h2 className="text-sm font-semibold text-gray-900">Alertas de parada</h2>
+              {activeAlertCount > 0 && (
+                <span className="rounded-full bg-[#F57F17] px-2 py-0.5 text-xs text-white">
+                  {activeAlertCount}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => navigate('/notifications')}
+              className="flex items-center gap-0.5 text-xs font-medium text-[#F57F17]"
+            >
+              Gestionar <ChevronRight className="h-3 w-3" />
+            </button>
+          </div>
+
+          {activeAlerts.length === 0 ? (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/route/${ROUTES[0].id}`)}
+              className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-4 text-left"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#F57F17]">
+                <BellRing className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Configura tu primera alerta</p>
+                <p className="text-xs text-gray-600">
+                  Abre una ruta, elige una parada en el mapa y activa avisos antes de que llegue el
+                  camión
+                </p>
+              </div>
+              <ChevronRight className="ml-auto h-4 w-4 text-[#F57F17]" />
+            </motion.button>
+          ) : (
+            <div className="space-y-2">
+              {activeAlerts.map(alert => {
+                const r = ROUTES.find(x => x.id === alert.routeId);
+                return (
+                  <motion.button
+                    key={alert.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(`/route/${alert.routeId}`)}
+                    className="flex w-full items-center gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-3 text-left"
+                  >
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#F57F17]">
+                      <Bell className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-900">{alert.stopName}</p>
+                      <p className="text-xs text-gray-500">
+                        {r?.name} · Aviso {alert.minutesBefore} min antes
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300" />
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Rutas guardadas */}
@@ -287,13 +376,13 @@ export default function Home() {
 
         {/* Banner informativo */}
         <div className="bg-white px-4 py-4">
-          <div className="flex gap-3 rounded-xl border border-[#FFB74D] bg-gradient-to-r from-[#FFF3E0] to-[#FFE0B2] p-3">
-            <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#E65100]" />
+          <div className="flex gap-3 rounded-xl border border-[#F57F17] bg-gradient-to-r from-amber-50 to-orange-50 p-3">
+            <BellRing className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#F57F17]" />
             <div className="text-sm">
-              <p className="font-medium text-gray-800">Consejo: Guarda tus rutas frecuentes</p>
+              <p className="font-medium text-gray-800">¿Esperas el camión en una parada?</p>
               <p className="mt-0.5 text-xs text-gray-600">
-                Al planificar o ver una ruta, toca &quot;Guardar en Mis rutas&quot; para tenerla
-                siempre a mano
+                Activa alertas de parada y te avisamos minutos antes de que llegue. Toca el botón
+                naranja en cualquier parada del mapa.
               </p>
             </div>
           </div>
