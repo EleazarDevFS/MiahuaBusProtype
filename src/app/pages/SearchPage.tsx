@@ -57,7 +57,7 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-white pb-20">
+    <div className="min-h-screen w-full bg-[#F8F9FA] pb-20">
       <Header title="Buscar ruta" />
       <Breadcrumb items={[
         { label: 'Inicio', path: '/home' },
