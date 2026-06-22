@@ -1,175 +1,181 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, BellOff, Clock, Info } from 'lucide-react';
+import React from 'react';
+import { useNavigate } from 'react-router';
+import { Bell, BellOff, BellRing, Clock, Info, MapPin, ChevronRight } from 'lucide-react';
 import { Header } from '../components/Header';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { BottomNav } from '../components/BottomNav';
+import { StaticMap } from '../components/StaticMap';
 import { motion } from 'motion/react';
 import { ROUTES } from '../data/routes';
-
-const NOTIF_KEY = 'miahuabus_notifications';
-
-interface NotifSettings {
-  routeId: string;
-  enabled: boolean;
-  minutesBefore: number;
-}
-
-function loadSettings(): NotifSettings[] {
-  try {
-    return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveSettings(settings: NotifSettings[]) {
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(settings));
-}
+import { useStopAlerts } from '../context/StopAlertsContext';
 
 export default function Notifications() {
-  const [settings, setSettings] = useState<NotifSettings[]>([]);
-  const [globalEnabled, setGlobalEnabled] = useState(true);
+  const navigate = useNavigate();
+  const {
+    alerts,
+    globalEnabled,
+    setGlobalEnabled,
+    toggleAlert,
+    removeAlert,
+    activeAlertCount,
+  } = useStopAlerts();
 
-  useEffect(() => {
-    const saved = loadSettings();
-    // Init routes not yet configured
-    const initialized = ROUTES.map(route => {
-      const existing = saved.find(s => s.routeId === route.id);
-      return existing || { routeId: route.id, enabled: false, minutesBefore: 10 };
-    });
-    setSettings(initialized);
-  }, []);
-
-  const toggle = (routeId: string) => {
-    const updated = settings.map(s =>
-      s.routeId === routeId ? { ...s, enabled: !s.enabled } : s
-    );
-    setSettings(updated);
-    saveSettings(updated);
-  };
-
-  const setMinutes = (routeId: string, mins: number) => {
-    const updated = settings.map(s =>
-      s.routeId === routeId ? { ...s, minutesBefore: mins } : s
-    );
-    setSettings(updated);
-    saveSettings(updated);
-  };
-
-  const enabledCount = settings.filter(s => s.enabled).length;
+  const alertsByRoute = ROUTES.map(route => ({
+    route,
+    items: alerts.filter(a => a.routeId === route.id),
+  })).filter(g => g.items.length > 0);
 
   return (
     <div className="min-h-screen w-full bg-[#F8F9FA] pb-20">
-      <Header title="Notificaciones" />
-      <Breadcrumb items={[
-        { label: 'Inicio', path: '/home' },
-        { label: 'Perfil', path: '/profile' },
-        { label: 'Notificaciones', path: '/notifications' }
-      ]} />
+      <Header title="Alertas de parada" />
+      <Breadcrumb
+        items={[
+          { label: 'Inicio', path: '/home' },
+          { label: 'Alertas', path: '/notifications' },
+        ]}
+      />
 
-      <div className="pt-[104px] px-4 py-4">
-        {/* Global toggle */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Bell className="w-5 h-5 text-blue-600" />
+      <div className="px-4 py-4 pt-[104px]">
+        {/* Hero */}
+        <div className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-[#F57F17] to-[#E65100] p-4 text-white shadow-md">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
+              <BellRing className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm text-gray-900">Alertas globales</p>
-              <p className="text-xs text-gray-500">
-                {enabledCount > 0 ? `${enabledCount} rutas configuradas` : 'Ninguna ruta activa'}
+              <p className="text-lg font-bold">Tus alertas de parada</p>
+              <p className="mt-0.5 text-sm text-orange-100">
+                {activeAlertCount > 0
+                  ? `${activeAlertCount} alerta${activeAlertCount > 1 ? 's' : ''} activa${activeAlertCount > 1 ? 's' : ''}`
+                  : 'Ninguna alerta configurada aún'}
               </p>
             </div>
           </div>
           <button
-            onClick={() => setGlobalEnabled(v => !v)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${
-              globalEnabled ? 'bg-[#2E7D32]' : 'bg-gray-300'
-            }`}
+            onClick={() => navigate(`/route/${ROUTES[0].id}`)}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-[#E65100]"
           >
-            <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${
-              globalEnabled ? 'translate-x-6' : 'translate-x-0.5'
-            }`} />
+            <MapPin className="h-4 w-4" />
+            Elegir parada en el mapa
           </button>
         </div>
 
-        {/* Aviso */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex gap-2">
-          <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+        {/* Global toggle */}
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
+              <Bell className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Alertas globales</p>
+              <p className="text-xs text-gray-500">
+                {globalEnabled ? 'Recibirás avisos simulados' : 'Todas las alertas pausadas'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setGlobalEnabled(!globalEnabled)}
+            className={`relative h-7 w-12 rounded-full transition-colors ${
+              globalEnabled ? 'bg-[#2E7D32]' : 'bg-gray-300'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                globalEnabled ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
           <p className="text-xs text-amber-800">
-            Las notificaciones son simuladas. Recibirás recordatorios dentro de la app basados en los horarios.
+            Las alertas son simuladas en este prototipo. Configúralas desde el detalle de cualquier
+            ruta tocando el botón naranja en una parada.
           </p>
         </div>
 
-        {/* Lista de rutas */}
-        <h3 className="text-sm text-gray-700 mb-3">Alertas por ruta</h3>
-        <div className="space-y-3">
-          {ROUTES.map((route) => {
-            const setting = settings.find(s => s.routeId === route.id);
-            if (!setting) return null;
-            return (
-              <motion.div
-                key={route.id}
-                layout
-                className={`bg-white border rounded-xl p-4 transition-all shadow-sm ${
-                  setting.enabled ? 'border-[#2E7D32]' : 'border-gray-200'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: route.color }} />
-                    <p className="text-sm text-gray-900">{route.name}</p>
-                  </div>
-                  <button
-                    onClick={() => toggle(route.id)}
-                    className={`w-11 h-6 rounded-full transition-colors relative ${
-                      setting.enabled && globalEnabled ? 'bg-[#2E7D32]' : 'bg-gray-200'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-0.5 transition-transform ${
-                      setting.enabled && globalEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
-                  </button>
-                </div>
+        {alerts.length === 0 ? (
+          <div className="py-8 text-center">
+            <BellOff className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+            <p className="mb-1 font-medium text-gray-900">Sin alertas configuradas</p>
+            <p className="mb-4 text-sm text-gray-500">
+              Abre una ruta, selecciona una parada en el mapa y activa tu alerta
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {alertsByRoute.map(({ route, items }) => (
+              <div key={route.id}>
+                <button
+                  onClick={() => navigate(`/route/${route.id}`)}
+                  className="mb-2 flex w-full items-center gap-2 text-left"
+                >
+                  <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: route.color }} />
+                  <span className="text-sm font-semibold text-gray-900">{route.name}</span>
+                  <ChevronRight className="h-3.5 w-3.5 text-gray-400" />
+                </button>
 
-                {setting.enabled && globalEnabled && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="border-t border-gray-100 pt-3"
-                  >
-                    <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Avisarme antes de:
-                    </p>
-                    <div className="flex gap-2">
-                      {[5, 10, 15, 20].map((mins) => (
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                  <StaticMap
+                    routeId={route.id}
+                    stops={route.stops}
+                    color={route.color}
+                    height="100px"
+                    interactive={false}
+                    alertStopIndices={items.filter(a => a.enabled).map(a => a.stopIndex)}
+                    className="rounded-none rounded-t-xl"
+                  />
+
+                  <div className="divide-y divide-gray-100">
+                    {items.map(alert => (
+                      <motion.div
+                        key={alert.id}
+                        layout
+                        className={`flex items-center gap-3 p-3 ${
+                          alert.enabled && globalEnabled ? 'bg-amber-50/50' : ''
+                        }`}
+                      >
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#F57F17] text-xs font-bold text-white">
+                          {alert.stopIndex + 1}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900">
+                            {alert.stopName}
+                          </p>
+                          <p className="flex items-center gap-1 text-xs text-gray-500">
+                            <Clock className="h-3 w-3" />
+                            {alert.minutesBefore} min antes
+                            {alert.notifyOnApproach && ' · Acercándose'}
+                          </p>
+                        </div>
                         <button
-                          key={mins}
-                          onClick={() => setMinutes(route.id, mins)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs transition-colors ${
-                            setting.minutesBefore === mins
-                              ? 'bg-[#2E7D32] text-white'
-                              : 'bg-[#F5F5F5] text-gray-700 hover:bg-green-50'
+                          onClick={() => toggleAlert(alert.id)}
+                          className={`relative h-6 w-10 flex-shrink-0 rounded-full transition-colors ${
+                            alert.enabled && globalEnabled ? 'bg-[#2E7D32]' : 'bg-gray-200'
                           }`}
                         >
-                          {mins} min
+                          <div
+                            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                              alert.enabled && globalEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                            }`}
+                          />
                         </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {(!setting.enabled || !globalEnabled) && (
-                  <p className="text-xs text-gray-400 flex items-center gap-1">
-                    <BellOff className="w-3 h-3" />
-                    Sin alertas activas para esta ruta
-                  </p>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
+                        <button
+                          onClick={() => removeAlert(alert.id)}
+                          className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                          aria-label="Eliminar alerta"
+                        >
+                          <BellOff className="h-4 w-4" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <BottomNav />
