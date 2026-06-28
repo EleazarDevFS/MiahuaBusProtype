@@ -3,8 +3,6 @@
 
 Este repositorio contiene una versión prototipo de la aplicación móvil MiahuaBus. Está pensada para demostraciones y pruebas de interfaz; algunas funcionalidades (por ejemplo, permisos de ubicación y autenticación con Google) están simuladas.
 
-Repositorio original de diseño: https://www.figma.com/design/94IrOSyImxFQ6WoXmNFmv7/MiahuaBus-mobile-prototype
-
 ## Contenido
 - Código fuente de la aplicación en `src/` (Vite + React).
 - Configuración de estilos y utilidades en `src/styles` y `src/app`.
