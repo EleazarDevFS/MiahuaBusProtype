@@ -59,14 +59,12 @@ pnpm run format
 pnpm run lint
 ```
 
-[!TIP]
-Si tu sistema no tiene `pnpm` instalado y no quieres instalarlo globalmente, puedes usar `npx pnpm@<version> install` para ejecutar pnpm en modo puntual.
+>[!TIP]
+>Si tu sistema no tiene `pnpm` instalado y no quieres instalarlo globalmente, puedes usar `npx pnpm@<version> install` para ejecutar pnpm en modo puntual.
 
 ## Nota sobre funcionalidades simuladas
 - Permisos de ubicación: el prototipo no solicita la geolocalización real del dispositivo; el flujo está simulado y guarda el estado en `localStorage`. Esto permite probar la experiencia de usuario sin depender de la API de geolocalización.
 - Inicio con Google: el login con Google está simulado desde el contexto de autenticación (`src/app/context/AuthContext.tsx`) para pruebas locales.
-
-Si necesitas integrar OAuth real o la API de geolocalización, puedo ayudarte a añadir la implementación y los pasos de configuración (credenciales, redirect URIs, alcance de permisos, etc.).
 
 ## Comportamiento relacionado con permisos (resumen)
 - Si el usuario rechaza permisos de ubicación, la acción de "Planificar ruta" queda bloqueada y se muestra un mensaje que indica: "Para usar esta funcionalidad debes dar permisos".
@@ -76,13 +74,4 @@ Si necesitas integrar OAuth real o la API de geolocalización, puedo ayudarte a 
 
 ## Advertencias
 - Este proyecto es un prototipo; no se recomienda usarlo en producción tal cual.
-- No expongas claves ni credenciales en el código fuente.
-
-## Contribución
-Para cambios locales:
-
-```bash
-git init                # sólo si aún no hay repo
-git add .
-git commit -m "Initial prototype import"
 ```
