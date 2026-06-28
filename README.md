@@ -72,4 +72,3 @@ pnpm run lint
 
 ## Advertencias
 - Este proyecto es un prototipo; no se recomienda usarlo en producción tal cual.
-
